@@ -1,6 +1,10 @@
 import express, { Application } from 'express';
 import bodyParser from 'body-parser';
 import { createServer, Server as HTTPServer } from 'http';
+import { connectDB } from '@config/db';
+import indexRouter from './v1/route';
+import DotenvConfig from '@config/dotenv.config';
+import { routeNotFound, errorHandler } from '@middlewares/error.middleware';
 
 export default class Server {
   public app: Application;
@@ -10,13 +14,13 @@ export default class Server {
     this.app = express();
     this.server = createServer(this.app);
     console.log('Registering middlewares...');
-    // this.initializeMiddlewares();
+    this.initializeMiddlewares();
     console.log('Registering routes...');
-    // this.routes();
+    this.routes();
     console.log('Registering error handlers...');
-    // this.handleErrors();
+    this.handleErrors();
     console.log('Connecting to database...');
-    // this.connectDatabase();
+    this.connectDatabase();
     console.log('Setting up graceful shutdown...');
     this.setupGracefulShutdown();
   }
@@ -29,8 +33,8 @@ export default class Server {
   }
 
   handleErrors() {
-    // this.app.use(errorHandler);
-    // this.app.use(routeNotFound);
+    this.app.use(errorHandler);
+    this.app.use(routeNotFound);
   }
 
   routes() {
@@ -40,12 +44,12 @@ export default class Server {
         message: 'Server initialized and ready for action!',
       });
     });
-    // this.app.use("/v1/api", indexRouter);
+    this.app.use('/v1/api', indexRouter);
   }
 
   async connectDatabase() {
     try {
-      //   await AppDataSource.initialize();
+      await connectDB();
       console.log('Database connection established successfully!');
     } catch (error) {
       console.error('Error connecting to the database:', error);

@@ -18,9 +18,8 @@
     "paths": {
       "@middlewares/*": ["src/middlewares/*"],
       "@config/*": ["src/config/*"],
-      "@auth/*": ["src/v1/feat/auth/*"],
       "@utils/*": ["src/utils/*"],
-      "@user/*": ["src/v1/feat/user/*"],
+      "@property/*": ["src/v1/feat/property/*"],
       "@validations/*": ["src/validations/*"]
     }
   },
