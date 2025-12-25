@@ -20,7 +20,8 @@
       "@config/*": ["src/config/*"],
       "@utils/*": ["src/utils/*"],
       "@property/*": ["src/v1/feat/property/*"],
-      "@validations/*": ["src/validations/*"]
+      "@validations/*": ["src/validations/*"],
+      "@grpc/*": ["src/grpc/*"]
     }
   },
   "exclude": ["node_modules"]
