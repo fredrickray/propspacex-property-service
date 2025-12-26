@@ -1,14 +1,17 @@
 import express, { Application } from 'express';
 import bodyParser from 'body-parser';
 import { createServer, Server as HTTPServer } from 'http';
+import * as grpc from '@grpc/grpc-js';
 import { connectDB } from '@config/db';
 import indexRouter from './v1/route';
 import DotenvConfig from '@config/dotenv.config';
 import { routeNotFound, errorHandler } from '@middlewares/error.middleware';
+import startPropertyGrpcServer from '@grpc/servers/property.servers';
 
 export default class Server {
   public app: Application;
   private server: HTTPServer;
+  private grpcServer: grpc.Server | null = null;
 
   constructor() {
     this.app = express();
@@ -50,7 +53,6 @@ export default class Server {
   async connectDatabase() {
     try {
       await connectDB();
-      console.log('Database connection established successfully!');
     } catch (error) {
       console.error('Error connecting to the database:', error);
       process.exit(1);
@@ -90,7 +92,8 @@ export default class Server {
     });
   }
 
-  start(port: number) {
+  async start(port: number, grpcPort: number = DotenvConfig.grpcPort) {
+    // Start HTTP server
     this.server.listen(port, () => {
       console.log(`Server initialized and ready for action! 🤖`);
       console.log('   ▀▄ ▄▀');
@@ -98,7 +101,22 @@ export default class Server {
       console.log('█▀███████▀█');
       console.log('█ █▀▀▀▀▀█ █');
       console.log('   ▀▀ ▀▀');
-      console.log('Hello Adventurer, PropSpaceX api is live !!!!');
+      console.log(
+        `Hello Adventurer, PropSpaceX HTTP API is live on port ${port}!`
+      );
     });
+
+    // Start gRPC server for inter-service communication
+    try {
+      this.grpcServer = await startPropertyGrpcServer(grpcPort);
+      console.log(`PropSpaceX gRPC server is live on port ${grpcPort}!`);
+    } catch (error) {
+      console.error('Failed to start gRPC server:', error);
+    }
+  }
+
+  // Method to get gRPC server instance (useful for testing)
+  getGrpcServer(): grpc.Server | null {
+    return this.grpcServer;
   }
 }
