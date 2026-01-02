@@ -101,6 +101,7 @@ export default class PropertyController {
       };
 
       const result = await PropertyService.listProperties(filters, pagination);
+      console.log('Result:', result);
       res.status(200).json({
         success: true,
         data: result.docs,
