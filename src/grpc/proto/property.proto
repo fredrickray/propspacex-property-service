@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package property;
+
+service PropertyService {
+  rpc CreateProperty (CreatePropertyRequest) returns (CreatePropertyResponse);
+  rpc GetProperty (GetPropertyRequest) returns (GetPropertyResponse);
+  rpc ListProperties (ListPropertiesRequest) returns (ListPropertiesResponse);
+  rpc UpdateProperty (UpdatePropertyRequest) returns (UpdatePropertyResponse);
+  rpc DeleteProperty (DeletePropertyRequest) returns (DeletePropertyResponse);
+}
+
+
+message CreatePropertyRequest {
+  string title = 1;
+  string description = 2;
+  double price = 3;
+  string location = 4;
+  repeated string amenities = 5;
+  string ownerId = 6;            // user service ref
+  repeated string mediaIds = 7;  // media service refs
+}
+
+message CreatePropertyResponse {
+  bool success = 1;
+  string propertyId = 2;
+}
+
+
+message GetPropertyRequest {
+  string propertyId = 1;
+}
+
+message GetPropertyResponse {
+  string propertyId = 1;
+  string title = 2;
+  string description = 3;
+  double price = 4;
+  string location = 5;
+  repeated string amenities = 6;
+  string ownerId = 7;
+  repeated string mediaIds = 8;
+  string createdAt = 9;
+  string updatedAt = 10;
+}
+
+// List Properties (with pagination + filters)
+message ListPropertiesRequest {
+  int32 page = 1;       // pagination
+  int32 limit = 2;      // pagination
+  string ownerId = 3;   // filter by owner
+  string location = 4;  // filter by location
+  double minPrice = 5;  // filter by price range
+  double maxPrice = 6;  // filter by price range
+}
+
+message ListPropertiesResponse {
+  repeated GetPropertyResponse properties = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+
+message UpdatePropertyRequest {
+  string propertyId = 1;
+  string title = 2;
+  string description = 3;
+  double price = 4;
+  string location = 5;
+  repeated string amenities = 6;
+  repeated string mediaIds = 7;
+}
+
+message UpdatePropertyResponse {
+  bool success = 1;
+}
+
+
+message DeletePropertyRequest {
+  string propertyId = 1;
+}
+
+message DeletePropertyResponse {
+  bool success = 1;
+}
