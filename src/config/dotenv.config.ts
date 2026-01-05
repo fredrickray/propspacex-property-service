@@ -3,6 +3,7 @@ dotenv.config();
 
 const DotenvConfig = {
   serverPort: process.env.PORT as unknown as number,
+  grpcPort: process.env.GRPC_PORT as unknown as number,
   Database: {
     url: process.env.MONGO_URL as string,
     testUrl: process.env.TEST_MONGO_URL as string,
@@ -15,6 +16,11 @@ const DotenvConfig = {
   },
   serverBaseURL: process.env.SERVER_BASE_URL as string,
   frontendBaseURL: process.env.FRONTEND_BASE_URL as string,
+  // gRPC service URLs for inter-service communication
+  services: {
+    userServiceGrpcUrl: process.env.USER_SERVICE_GRPC_URL as string,
+    mediaServiceGrpcUrl: process.env.MEDIA_SERVICE_GRPC_URL as string,
+  },
 };
 
 export default DotenvConfig;

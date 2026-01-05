@@ -1,25 +1,66 @@
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
-import * as path from 'path';
+import path from 'path';
 
-function loadProto(protoFile: string) {
-  const PROTO_PATH = path.resolve(__dirname, 'proto', protoFile);
-  const packageDef = protoLoader.loadSync(PROTO_PATH, {
-    keepCase: true,
-    longs: String,
-    enums: String,
-    defaults: true,
-    oneofs: true,
-  });
-  return grpc.loadPackageDefinition(packageDef) as any;
+// Proto loader options
+const protoLoaderOptions: protoLoader.Options = {
+  keepCase: false,
+  longs: String,
+  enums: String,
+  defaults: true,
+  oneofs: true,
+};
+
+// Load proto files
+const PROTO_DIR = path.join(__dirname, 'proto');
+
+const propertyPackageDefinition = protoLoader.loadSync(
+  path.join(PROTO_DIR, 'property.proto'),
+  protoLoaderOptions
+);
+
+const mediaPackageDefinition = protoLoader.loadSync(
+  path.join(PROTO_DIR, 'media.proto'),
+  protoLoaderOptions
+);
+
+const userPackageDefinition = protoLoader.loadSync(
+  path.join(PROTO_DIR, 'user.proto'),
+  protoLoaderOptions
+);
+
+// Load gRPC definitions
+const propertyProto = grpc.loadPackageDefinition(
+  propertyPackageDefinition
+) as any;
+const mediaProto = grpc.loadPackageDefinition(mediaPackageDefinition) as any;
+const userProto = grpc.loadPackageDefinition(userPackageDefinition) as any;
+
+// Export proto definitions
+export const Protos = {
+  property: propertyProto.property,
+  media: mediaProto.media,
+  user: userProto.user,
+};
+
+/**
+ * Create a gRPC client for a specific service
+ */
+export function createClient<T>(
+  ServiceDefinition: grpc.ServiceClientConstructor,
+  address: string
+): T {
+  return new ServiceDefinition(
+    address,
+    grpc.credentials.createInsecure()
+  ) as unknown as T;
 }
 
-export const Protos = {
-  user: loadProto('user.proto'),
-  media: loadProto('media.proto'),
-  property: loadProto('property.proto'),
-};
+/**
+ * Create a gRPC server
+ */
+export function createServer(): grpc.Server {
+  return new grpc.Server();
+}
 
-export const createClient = (service: any, address: string) => {
-  return new service(address, grpc.credentials.createInsecure());
-};
+export { grpc, protoLoader };

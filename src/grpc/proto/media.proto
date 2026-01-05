@@ -4,29 +4,29 @@ package media;
 
 service MediaService {
     rpc UploadMedia (UploadMediaRequest) returns (UploadMediaResponse);
-    rpc GetMedia (MediaRequest) returns (MediaResponse);
+    rpc GetMedia (GetMediaRequest) returns (GetMediaResponse);
 }
 
 message UploadMediaRequest {
     string propertyId = 1;
-  string fileName = 2;
-  string fileType = 3;
-  bytes fileData = 4; // Base64 encoded
+    string fileName = 2;
+    string fileType = 3;
+    bytes fileData = 4; // Base64 encoded
 }
 
 message UploadMediaResponse {
     bool success = 1;
-  string mediaUrl = 2;
+    string mediaUrl = 2;
 }
 
 message GetMediaRequest {
-  string mediaId = 1;
+    string mediaId = 1;
 }
 
 message GetMediaResponse {
     string status = 1;
-  string mediaUrl = 2;
-  string fileType = 3;
+    string mediaUrl = 2;
+    string fileType = 3;
 }
 
 message MediaMetadata {
