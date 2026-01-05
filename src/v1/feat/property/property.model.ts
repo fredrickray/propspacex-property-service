@@ -7,10 +7,52 @@ import {
   PropertyType,
 } from './property.type';
 
+const amenitySchema = new Schema(
+  {
+    comfort: { type: [String], default: [] },
+    safety: { type: [String], default: [] },
+    recreation: { type: [String], default: [] },
+  },
+  { _id: false }
+);
+
+const sizeSchema = new Schema(
+  {
+    bedrooms: { type: Number },
+    bathrooms: { type: Number },
+    parkingSpaces: { type: Number },
+    dimensionDetails: {
+      totalArea: { type: Number },
+      lotSize: { type: Number },
+      yearBuilt: { type: Number },
+      propertyType: { type: String },
+    },
+  },
+  { _id: false }
+);
+
+const locationSchema = new Schema(
+  {
+    address: { type: String, required: true },
+    suite: { type: String },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    country: { type: String, required: true },
+    coordinates: {
+      type: { type: String, enum: ['Point'], required: true },
+      coordinates: { type: [Number], required: true },
+    },
+    neighborhoodHighlights: {
+      description: { type: String },
+      tags: { type: [String], default: [] },
+    },
+  },
+  { _id: false }
+);
+
 const propertySchema = new Schema<IProperty>(
   {
     title: { type: String, required: true },
-    description: { type: String, required: true },
     type: {
       type: String,
       enum: Object.values(PropertyType),
@@ -27,23 +69,11 @@ const propertySchema = new Schema<IProperty>(
       enum: Object.values(Currency),
       default: Currency.USD,
     },
-    location: {
-      address: { type: String, required: true },
-      city: { type: String, required: true },
-      state: { type: String, required: true },
-      country: { type: String, required: true },
-      coordinates: {
-        type: { type: String, enum: ['Point'], required: true },
-        coordinates: { type: [Number], required: true },
-      },
-    },
+    description: { type: String, required: true },
+    location: { type: locationSchema, required: true },
     features: { type: [String], default: [] },
-    size: {
-      area: { type: Number, required: true },
-      bedrooms: { type: Number },
-      bathrooms: { type: Number },
-    },
-    amenities: { type: [String], default: [] },
+    size: { type: sizeSchema, required: true },
+    amenities: { type: [amenitySchema], default: [] },
     media: {
       images: { type: [String], default: [] },
       videos: { type: [String], default: [] },

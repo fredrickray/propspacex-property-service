@@ -1,3 +1,33 @@
+export interface IPropertyLocation {
+  address: string;
+  suite?: string;
+  city: string;
+  state: string;
+  country: string;
+  coordinates: { type: 'Point'; coordinates: [number, number] }; // GeoJSON
+  neighborhoodHighlights?: {
+    description?: string;
+    tags?: string[];
+  };
+}
+
+export interface IPropertySize {
+  bedrooms?: number;
+  bathrooms?: number;
+  parkingSpaces?: number;
+  dimensionDetails?: {
+    totalArea?: number; // in square meters
+    lotSize?: number; // in square meters
+    yearBuilt?: number; // in square meters
+    propertyType?: string; // e.g., residential, commercial
+  };
+}
+
+export interface IPropertyAmenties {
+  comfort?: string[];
+  safety?: string[];
+  recreation?: string[];
+}
 export interface IProperty {
   title: string;
   description: string;
@@ -5,20 +35,10 @@ export interface IProperty {
   status: PropertyStatus;
   price: number;
   currency: Currency;
-  location: {
-    address: string;
-    city: string;
-    state: string;
-    country: string;
-    coordinates: { type: 'Point'; coordinates: [number, number] }; // GeoJSON
-  };
+  location: IPropertyLocation;
   features: string[];
-  size: {
-    area: number; // square meters
-    bedrooms?: number;
-    bathrooms?: number;
-  };
-  amenities: string[];
+  size: IPropertySize;
+  amenities: IPropertyAmenties[];
   media: {
     images: string[];
     videos: string[];
@@ -32,6 +52,26 @@ export interface IProperty {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface PropertyFilters {
+  type?: string;
+  status?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  city?: string;
+  country?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  ownerId?: string;
+  isActive?: boolean;
+  search?: string;
+}
+
+export interface PaginationOptions {
+  page?: number;
+  limit?: number;
+  sort?: string;
 }
 
 export enum PropertyType {

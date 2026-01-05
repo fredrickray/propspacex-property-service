@@ -1,21 +1,571 @@
 import * as grpc from '@grpc/grpc-js';
 import { Protos } from '../index';
+import PropertyService from '@property/property.service';
+import { IProperty, PropertyStatus } from '@property/property.type';
 
-const server = new grpc.Server();
+// Helper to convert MongoDB document to gRPC Property message
+const toGrpcProperty = (property: any) => {
+  return {
+    id: property._id?.toString() || property.id,
+    title: property.title,
+    description: property.description,
+    type: property.type,
+    status: property.status,
+    price: property.price,
+    currency: property.currency,
+    location: property.location
+      ? {
+          address: property.location.address,
+          suite: property.location.suite || '',
+          city: property.location.city,
+          state: property.location.state,
+          country: property.location.country,
+          coordinates: property.location.coordinates
+            ? {
+                type: property.location.coordinates.type,
+                coordinates: property.location.coordinates.coordinates,
+              }
+            : null,
+          neighborhoodHighlights:
+            property.location.neighborhoodHighlights || null,
+        }
+      : null,
+    features: property.features || [],
+    size: property.size
+      ? {
+          bedrooms: property.size.bedrooms || 0,
+          bathrooms: property.size.bathrooms || 0,
+          parkingSpaces: property.size.parkingSpaces || 0,
+          dimensionDetails: property.size.dimensionDetails || null,
+        }
+      : null,
+    amenities: property.amenities || [],
+    media: property.media || { images: [], videos: [] },
+    ownerId: property.ownerId,
+    blockchain: property.blockchain || null,
+    isActive: property.isActive,
+    createdAt: property.createdAt?.toISOString() || '',
+    updatedAt: property.updatedAt?.toISOString() || '',
+  };
+};
 
-server.addService(Protos.property.PropertyService.service, {
-  CreateProperty: (call: any, callback: any) => {
-    const data = call.request;
-    // TODO: your business logic
-    callback(null, { success: true, id: '12345' });
-  },
-});
+// Helper to convert gRPC request to IProperty
+const toPropertyPayload = (request: any): Partial<IProperty> => {
+  const payload: any = {};
 
-server.bindAsync(
-  '0.0.0.0:50052',
-  grpc.ServerCredentials.createInsecure(),
-  () => {
-    console.log('Property gRPC server running on 50052');
-    server.start();
+  if (request.title) payload.title = request.title;
+  if (request.description) payload.description = request.description;
+  if (request.type) payload.type = request.type;
+  if (request.status) payload.status = request.status;
+  if (request.price) payload.price = request.price;
+  if (request.currency) payload.currency = request.currency;
+  if (request.ownerId) payload.ownerId = request.ownerId;
+  if (request.features) payload.features = request.features;
+  if (request.amenities) payload.amenities = request.amenities;
+
+  if (request.location) {
+    payload.location = {
+      address: request.location.address,
+      suite: request.location.suite,
+      city: request.location.city,
+      state: request.location.state,
+      country: request.location.country,
+      coordinates: request.location.coordinates
+        ? {
+            type: request.location.coordinates.type || 'Point',
+            coordinates: request.location.coordinates.coordinates,
+          }
+        : undefined,
+      neighborhoodHighlights: request.location.neighborhoodHighlights,
+    };
   }
-);
+
+  if (request.size) {
+    payload.size = {
+      bedrooms: request.size.bedrooms,
+      bathrooms: request.size.bathrooms,
+      parkingSpaces: request.size.parkingSpaces,
+      dimensionDetails: request.size.dimensionDetails,
+    };
+  }
+
+  if (request.media) {
+    payload.media = {
+      images: request.media.images || [],
+      videos: request.media.videos || [],
+    };
+  }
+
+  return payload;
+};
+
+// gRPC Service Implementation
+const propertyServiceImpl = {
+  // Create Property
+  CreateProperty: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const payload = toPropertyPayload(call.request) as IProperty;
+      const property = await PropertyService.createProperty(payload);
+      callback(null, {
+        success: true,
+        message: 'Property created successfully',
+        property: toGrpcProperty(property),
+      });
+    } catch (error: any) {
+      callback({
+        code: grpc.status.INTERNAL,
+        message: error.message || 'Failed to create property',
+      });
+    }
+  },
+
+  // Get Property
+  GetProperty: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId } = call.request;
+      const property = await PropertyService.getPropertyById(propertyId);
+      callback(null, {
+        success: true,
+        message: 'Property retrieved successfully',
+        property: toGrpcProperty(property),
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404 ? grpc.status.NOT_FOUND : grpc.status.INTERNAL,
+        message: error.message || 'Failed to get property',
+      });
+    }
+  },
+
+  // Get Property With Owner
+  GetPropertyWithOwner: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId } = call.request;
+      const result = await PropertyService.getPropertyWithOwner(propertyId);
+      callback(null, {
+        success: true,
+        message: 'Property with owner retrieved successfully',
+        property: toGrpcProperty(result.property),
+        owner: {
+          userId: result.owner.userId,
+          firstName: result.owner.firstName,
+          lastName: result.owner.lastName,
+          email: result.owner.email,
+          phone: result.owner.phone,
+          isVerified: result.owner.isVerified,
+        },
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404 ? grpc.status.NOT_FOUND : grpc.status.INTERNAL,
+        message: error.message || 'Failed to get property with owner',
+      });
+    }
+  },
+
+  // Update Property
+  UpdateProperty: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, userId, ...updates } = call.request;
+      const payload = toPropertyPayload(updates);
+      const property = await PropertyService.updateProperty(
+        propertyId,
+        userId,
+        payload
+      );
+      callback(null, {
+        success: true,
+        message: 'Property updated successfully',
+        property: toGrpcProperty(property),
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : grpc.status.INTERNAL,
+        message: error.message || 'Failed to update property',
+      });
+    }
+  },
+
+  // Delete Property (Soft Delete)
+  DeleteProperty: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, userId } = call.request;
+      const result = await PropertyService.deleteProperty(propertyId, userId);
+      callback(null, result);
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : grpc.status.INTERNAL,
+        message: error.message || 'Failed to delete property',
+      });
+    }
+  },
+
+  // Hard Delete Property
+  HardDeleteProperty: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, userId } = call.request;
+      const result = await PropertyService.hardDeleteProperty(
+        propertyId,
+        userId
+      );
+      callback(null, result);
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : grpc.status.INTERNAL,
+        message: error.message || 'Failed to hard delete property',
+      });
+    }
+  },
+
+  // List Properties
+  ListProperties: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const {
+        page,
+        limit,
+        sort,
+        type,
+        status,
+        minPrice,
+        maxPrice,
+        city,
+        country,
+        bedrooms,
+        bathrooms,
+        ownerId,
+        isActive,
+        search,
+      } = call.request;
+
+      const filters: any = {};
+      if (type) filters.type = type;
+      if (status) filters.status = status;
+      if (minPrice) filters.minPrice = minPrice;
+      if (maxPrice) filters.maxPrice = maxPrice;
+      if (city) filters.city = city;
+      if (country) filters.country = country;
+      if (bedrooms) filters.bedrooms = bedrooms;
+      if (bathrooms) filters.bathrooms = bathrooms;
+      if (ownerId) filters.ownerId = ownerId;
+      if (isActive !== undefined) filters.isActive = isActive;
+      if (search) filters.search = search;
+
+      const pagination = { page: page || 1, limit: limit || 10, sort };
+
+      const result = await PropertyService.listProperties(filters, pagination);
+
+      callback(null, {
+        success: true,
+        message: 'Properties retrieved successfully',
+        properties: result.docs.map(toGrpcProperty),
+        pagination: {
+          total: result.totalDocs,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+          hasNextPage: result.hasNextPage,
+          hasPrevPage: result.hasPrevPage,
+        },
+      });
+    } catch (error: any) {
+      callback({
+        code: grpc.status.INTERNAL,
+        message: error.message || 'Failed to list properties',
+      });
+    }
+  },
+
+  // Get Properties By Owner
+  GetPropertiesByOwner: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { ownerId, page, limit, sort } = call.request;
+      const pagination = { page: page || 1, limit: limit || 10, sort };
+
+      const result = await PropertyService.getPropertiesByOwner(
+        ownerId,
+        pagination
+      );
+
+      callback(null, {
+        success: true,
+        message: 'Owner properties retrieved successfully',
+        properties: result.docs.map(toGrpcProperty),
+        pagination: {
+          total: result.totalDocs,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+          hasNextPage: result.hasNextPage,
+          hasPrevPage: result.hasPrevPage,
+        },
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404 ? grpc.status.NOT_FOUND : grpc.status.INTERNAL,
+        message: error.message || 'Failed to get owner properties',
+      });
+    }
+  },
+
+  // Search By Location
+  SearchByLocation: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { longitude, latitude, maxDistanceKm, page, limit } = call.request;
+      const pagination = { page: page || 1, limit: limit || 10 };
+
+      const properties = await PropertyService.searchByLocation(
+        longitude,
+        latitude,
+        maxDistanceKm || 10,
+        pagination
+      );
+
+      callback(null, {
+        success: true,
+        message: 'Location search completed successfully',
+        properties: properties.map(toGrpcProperty),
+        pagination: {
+          total: properties.length,
+          page: pagination.page,
+          limit: pagination.limit,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+      });
+    } catch (error: any) {
+      callback({
+        code: grpc.status.INTERNAL,
+        message: error.message || 'Failed to search by location',
+      });
+    }
+  },
+
+  // Update Property Status
+  UpdatePropertyStatus: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, userId, status } = call.request;
+      const property = await PropertyService.updatePropertyStatus(
+        propertyId,
+        userId,
+        status as PropertyStatus
+      );
+      callback(null, {
+        success: true,
+        message: 'Property status updated successfully',
+        property: toGrpcProperty(property),
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : grpc.status.INTERNAL,
+        message: error.message || 'Failed to update property status',
+      });
+    }
+  },
+
+  // Update Property Media
+  UpdatePropertyMedia: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, userId, images, videos } = call.request;
+      const property = await PropertyService.updatePropertyMedia(
+        propertyId,
+        userId,
+        {
+          images,
+          videos,
+        }
+      );
+      callback(null, {
+        success: true,
+        message: 'Property media updated successfully',
+        property: toGrpcProperty(property),
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : grpc.status.INTERNAL,
+        message: error.message || 'Failed to update property media',
+      });
+    }
+  },
+
+  // Add Property Media
+  AddPropertyMedia: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, userId, images, videos } = call.request;
+      const property = await PropertyService.addPropertyMedia(
+        propertyId,
+        userId,
+        {
+          images,
+          videos,
+        }
+      );
+      callback(null, {
+        success: true,
+        message: 'Media added to property successfully',
+        property: toGrpcProperty(property),
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : grpc.status.INTERNAL,
+        message: error.message || 'Failed to add property media',
+      });
+    }
+  },
+
+  // Update Blockchain Info
+  UpdateBlockchainInfo: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, userId, nftId, contractAddress, transactionHash } =
+        call.request;
+      const property = await PropertyService.updateBlockchainInfo(
+        propertyId,
+        userId,
+        {
+          nftId,
+          contractAddress,
+          transactionHash,
+        }
+      );
+      callback(null, {
+        success: true,
+        message: 'Blockchain info updated successfully',
+        property: toGrpcProperty(property),
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : grpc.status.INTERNAL,
+        message: error.message || 'Failed to update blockchain info',
+      });
+    }
+  },
+
+  // Get Owner Property Stats
+  GetOwnerPropertyStats: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { ownerId } = call.request;
+      const stats = await PropertyService.getOwnerPropertyStats(ownerId);
+      callback(null, {
+        success: true,
+        ...stats,
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404 ? grpc.status.NOT_FOUND : grpc.status.INTERNAL,
+        message: error.message || 'Failed to get owner property stats',
+      });
+    }
+  },
+};
+
+// Create and start the gRPC server
+export const startPropertyGrpcServer = (
+  port: number = 50053
+): Promise<grpc.Server> => {
+  return new Promise((resolve, reject) => {
+    const server = new grpc.Server();
+
+    server.addService(
+      Protos.property.PropertyService.service,
+      propertyServiceImpl
+    );
+
+    server.bindAsync(
+      `0.0.0.0:${port}`,
+      grpc.ServerCredentials.createInsecure(),
+      (error, boundPort) => {
+        if (error) {
+          console.error('Failed to start Property gRPC server:', error);
+          reject(error);
+          return;
+        }
+        console.log(`Property gRPC server running on port ${boundPort}`);
+        resolve(server);
+      }
+    );
+  });
+};
+
+// Export for use in main server file
+export default startPropertyGrpcServer;
