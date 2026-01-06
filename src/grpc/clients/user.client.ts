@@ -299,7 +299,7 @@ let defaultClient: UserServiceClient | null = null;
 export const getUserClient = (address?: string): UserServiceClient => {
   if (!defaultClient) {
     const serverAddress =
-      address || process.env.USER_SERVICE_GRPC_URL || 'localhost:50052';
+      address || process.env.USER_SERVICE_GRPC_URL || 'localhost:50051';
     defaultClient = new UserServiceClient(serverAddress);
   }
   return defaultClient;
