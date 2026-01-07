@@ -272,6 +272,7 @@ const propertyServiceImpl = {
         bathrooms,
         ownerId,
         isActive,
+        filterByActive, // Use a separate boolean to indicate if isActive filter should be applied
         search,
       } = call.request;
 
@@ -285,10 +286,17 @@ const propertyServiceImpl = {
       if (bedrooms) filters.bedrooms = bedrooms;
       if (bathrooms) filters.bathrooms = bathrooms;
       if (ownerId) filters.ownerId = ownerId;
-      if (isActive !== undefined) filters.isActive = isActive;
+      // Only apply isActive filter if filterByActive is explicitly true
+      // This avoids the protobuf default false issue
+      if (filterByActive === true) {
+        filters.isActive = isActive;
+      }
       if (search) filters.search = search;
 
       const pagination = { page: page || 1, limit: limit || 10, sort };
+
+      console.log('ListProperties filters:', filters);
+      console.log('ListProperties pagination:', pagination);
 
       const result = await PropertyService.listProperties(filters, pagination);
 
@@ -305,6 +313,8 @@ const propertyServiceImpl = {
           hasPrevPage: result.hasPrevPage,
         },
       });
+
+      console.log('Listed properties:', result);
     } catch (error: any) {
       callback({
         code: grpc.status.INTERNAL,
