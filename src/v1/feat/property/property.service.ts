@@ -69,7 +69,19 @@ export default class PropertyService {
     filters: PropertyFilters = {},
     pagination: PaginationOptions = {}
   ): Promise<PaginateResult<IProperty>> {
-    const query: FilterQuery<IProperty> = { isActive: true };
+    const query: FilterQuery<IProperty> = {};
+
+    // Debug: Check total count in collection
+    const totalCount = await PropertyModel.countDocuments({});
+    console.log('Total properties in database:', totalCount);
+
+    // Apply isActive filter - by default show active properties
+    if (filters.isActive !== undefined) {
+      query.isActive = filters.isActive;
+    } else {
+      // By default, show active properties (including those where isActive might not be set)
+      query.$or = [{ isActive: true }, { isActive: { $exists: false } }];
+    }
 
     // Apply filters
     if (filters.type) {
@@ -102,14 +114,23 @@ export default class PropertyService {
     if (filters.ownerId) {
       query.ownerId = filters.ownerId;
     }
-    if (filters.isActive !== undefined) {
-      query.isActive = filters.isActive;
-    }
     if (filters.search) {
-      query.$or = [
-        { title: { $regex: filters.search, $options: 'i' } },
-        { description: { $regex: filters.search, $options: 'i' } },
-      ];
+      // If we already have $or for isActive, we need to use $and to combine with search
+      const searchCondition = {
+        $or: [
+          { title: { $regex: filters.search, $options: 'i' } },
+          { description: { $regex: filters.search, $options: 'i' } },
+        ],
+      };
+
+      if (query.$or) {
+        // Combine isActive $or with search $or using $and
+        const isActiveCondition = query.$or;
+        delete query.$or;
+        query.$and = [{ $or: isActiveCondition }, searchCondition];
+      } else {
+        query.$or = searchCondition.$or;
+      }
     }
 
     const options = {
@@ -117,6 +138,9 @@ export default class PropertyService {
       limit: pagination.limit || 10,
       sort: pagination.sort || '-createdAt',
     };
+
+    console.log('Query:', JSON.stringify(query, null, 2));
+    console.log('Options:', options);
 
     return PropertyModel.paginate(query, options);
   }
