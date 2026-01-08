@@ -40,8 +40,8 @@ export interface IProperty {
   size: IPropertySize;
   amenities: IPropertyAmenties[];
   media: {
-    images: string[];
-    videos: string[];
+    images: [{ url: string; mediaId: string }];
+    videos: [{ url: string; mediaId: string }];
   };
   ownerId: string;
   blockchain?: {
