@@ -75,8 +75,8 @@ const propertySchema = new Schema<IProperty>(
     size: { type: sizeSchema, required: true },
     amenities: { type: [amenitySchema], default: [] },
     media: {
-      images: { type: [String], default: [] },
-      videos: { type: [String], default: [] },
+      images: [{ url: String, mediaId: String }],
+      videos: [{ url: String, mediaId: String }],
     },
     ownerId: { type: String, required: true },
     blockchain: {
