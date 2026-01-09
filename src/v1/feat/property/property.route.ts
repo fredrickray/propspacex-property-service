@@ -32,4 +32,35 @@ propertyRouter.post('/:id/media', PropertyController.addPropertyMedia);
 // Blockchain routes
 propertyRouter.put('/:id/blockchain', PropertyController.updateBlockchainInfo);
 
+// Document routes
+propertyRouter.post(
+  '/:id/documents',
+  PropertyController.createPropertyDocuments
+);
+propertyRouter.get('/:id/documents', PropertyController.getPropertyDocuments);
+propertyRouter.put(
+  '/:id/documents/:documentType',
+  PropertyController.updatePropertyDocument
+);
+propertyRouter.get(
+  '/:id/with-documents',
+  PropertyController.getPropertyWithDocuments
+);
+propertyRouter.get(
+  '/:id/documents/verification-status',
+  PropertyController.getDocumentVerificationStatus
+);
+propertyRouter.patch(
+  '/:id/documents/:documentType/verify',
+  PropertyController.verifyPropertyDocument
+);
+propertyRouter.delete(
+  '/:id/documents/:documentType',
+  PropertyController.deletePropertyDocument
+);
+propertyRouter.delete(
+  '/:id/documents',
+  PropertyController.deleteAllPropertyDocuments
+);
+
 export default propertyRouter;
