@@ -29,6 +29,14 @@ service PropertyService {
 
   // Statistics
   rpc GetOwnerPropertyStats(GetOwnerStatsRequest) returns (OwnerStatsResponse);
+
+  // Document Operations
+  rpc CreatePropertyDocuments(CreatePropertyDocumentsRequest) returns (PropertyDocumentResponse);
+  rpc GetPropertyDocuments(GetPropertyDocumentsRequest) returns (PropertyDocumentResponse);
+  rpc UpdatePropertyDocument(UpdatePropertyDocumentRequest) returns (PropertyDocumentResponse);
+  rpc DeletePropertyDocument(DeletePropertyDocumentRequest) returns (MessageResponse);
+  rpc VerifyPropertyDocument(VerifyPropertyDocumentRequest) returns (PropertyDocumentResponse);
+  rpc GetDocumentVerificationStatus(GetPropertyDocumentsRequest) returns (DocumentVerificationStatusResponse);
 }
 
 // ==================== Enums ====================
@@ -99,9 +107,14 @@ message PropertyAmenities {
   repeated string recreation = 3;
 }
 
+message MediaItem {
+  string url = 1;
+  string mediaId = 2;
+}
+
 message PropertyMedia {
-  repeated string images = 1;
-  repeated string videos = 2;
+  repeated MediaItem images = 1;
+  repeated MediaItem videos = 2;
 }
 
 message BlockchainInfo {
@@ -282,4 +295,72 @@ message OwnerStatsResponse {
   int32 rented = 4;
   int32 sold = 5;
   int32 pending = 6;
+}
+
+// ==================== Document Messages ====================
+
+message DocumentInfo {
+  string url = 1;
+  string mediaId = 2;
+  bool isVerified = 3;
+}
+
+message PropertyDocument {
+  string id = 1;
+  string propertyId = 2;
+  DocumentInfo deedDocument = 3;
+  DocumentInfo inspectionReport = 4;
+  DocumentInfo appraisalReport = 5;
+  string createdAt = 6;
+  string updatedAt = 7;
+}
+
+message CreatePropertyDocumentsRequest {
+  string propertyId = 1;
+  string userId = 2;
+  DocumentInfo deedDocument = 3;
+  DocumentInfo inspectionReport = 4;
+  DocumentInfo appraisalReport = 5;
+}
+
+message GetPropertyDocumentsRequest {
+  string propertyId = 1;
+}
+
+message UpdatePropertyDocumentRequest {
+  string propertyId = 1;
+  string userId = 2;
+  string documentType = 3; // "deedDocument", "inspectionReport", "appraisalReport"
+  DocumentInfo document = 4;
+}
+
+message DeletePropertyDocumentRequest {
+  string propertyId = 1;
+  string userId = 2;
+  string documentType = 3; // "deedDocument", "inspectionReport", "appraisalReport"
+}
+
+message VerifyPropertyDocumentRequest {
+  string propertyId = 1;
+  string documentType = 2; // "deedDocument", "inspectionReport", "appraisalReport"
+  bool isVerified = 3;
+}
+
+message PropertyDocumentResponse {
+  bool success = 1;
+  string message = 2;
+  PropertyDocument document = 3;
+}
+
+message DocumentVerificationStatus {
+  bool deedDocumentVerified = 1;
+  bool inspectionReportVerified = 2;
+  bool appraisalReportVerified = 3;
+  bool allVerified = 4;
+}
+
+message DocumentVerificationStatusResponse {
+  bool success = 1;
+  string message = 2;
+  DocumentVerificationStatus status = 3;
 }

@@ -18,6 +18,8 @@ const DotenvConfig = {
   frontendBaseURL: process.env.FRONTEND_BASE_URL as string,
   // gRPC service URLs for inter-service communication
   services: {
+    userServiceUrl: process.env.USER_SERVICE_URL as string,
+    mediaServiceUrl: process.env.MEDIA_SERVICE_URL as string,
     userServiceGrpcUrl: process.env.USER_SERVICE_GRPC_URL as string,
     mediaServiceGrpcUrl: process.env.MEDIA_SERVICE_GRPC_URL as string,
   },

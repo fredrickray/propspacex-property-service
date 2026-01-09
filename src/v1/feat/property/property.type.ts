@@ -40,8 +40,8 @@ export interface IProperty {
   size: IPropertySize;
   amenities: IPropertyAmenties[];
   media: {
-    images: [{ url: string; mediaId: string }];
-    videos: [{ url: string; mediaId: string }];
+    images: { url: string; mediaId: string }[];
+    videos: { url: string; mediaId: string }[];
   };
   ownerId: string;
   blockchain?: {
@@ -50,6 +50,28 @@ export interface IProperty {
     transactionHash?: string;
   };
   isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IPropertyDocument {
+  _id: string;
+  propertyId: string;
+  deedDocument: {
+    url: string;
+    mediaId: string;
+    isVerified: boolean;
+  };
+  inspectionReport?: {
+    url: string;
+    mediaId: string;
+    isVerified: boolean;
+  };
+  appraisalReport?: {
+    url: string;
+    mediaId: string;
+    isVerified: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 }

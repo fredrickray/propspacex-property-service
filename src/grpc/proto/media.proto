@@ -3,35 +3,104 @@ syntax = "proto3";
 package media;
 
 service MediaService {
-    rpc UploadMedia (UploadMediaRequest) returns (UploadMediaResponse);
-    rpc GetMedia (GetMediaRequest) returns (GetMediaResponse);
+  // Get media by ID
+  rpc GetMedia(GetMediaRequest) returns (MediaResponse);
+  
+  // Get media by entity
+  rpc GetMediaByEntity(GetMediaByEntityRequest) returns (MediaListResponse);
+  
+  // Update media
+  rpc UpdateMedia(UpdateMediaRequest) returns (MediaResponse);
+  
+  // Delete media (soft delete)
+  rpc DeleteMedia(DeleteMediaRequest) returns (DeleteMediaResponse);
+  
+  // Bulk delete media
+  rpc BulkDeleteMedia(BulkDeleteMediaRequest) returns (BulkDeleteMediaResponse);
+  
+  // Get signed URL
+  rpc GetSignedUrl(GetSignedUrlRequest) returns (SignedUrlResponse);
 }
 
-message UploadMediaRequest {
-    string propertyId = 1;
-    string fileName = 2;
-    string fileType = 3;
-    bytes fileData = 4; // Base64 encoded
-}
-
-message UploadMediaResponse {
-    bool success = 1;
-    string mediaUrl = 2;
+message Media {
+  string id = 1;
+  string original_name = 2;
+  string file_name = 3;
+  string url = 4;
+  optional string thumbnail_url = 5;
+  string type = 6;
+  string mime_type = 7;
+  int64 size = 8;
+  optional int32 width = 9;
+  optional int32 height = 10;
+  optional int32 duration = 11;
+  string entity_type = 12;
+  string entity_id = 13;
+  string field_name = 14;
+  string uploaded_by = 15;
+  string storage_provider = 16;
+  string storage_path = 17;
+  bool is_processed = 18;
+  bool is_active = 19;
+  string created_at = 20;
+  string updated_at = 21;
 }
 
 message GetMediaRequest {
-    string mediaId = 1;
+  string id = 1;
 }
 
-message GetMediaResponse {
-    string status = 1;
-    string mediaUrl = 2;
-    string fileType = 3;
+message GetMediaByEntityRequest {
+  string entity_type = 1;
+  string entity_id = 2;
+  optional string field_name = 3;
 }
 
-message MediaMetadata {
-    string media_id = 1;
-    string filename = 2;
-    int64 size = 3;
-    string upload_date = 4;
+message UpdateMediaRequest {
+  string id = 1;
+  optional bool is_active = 2;
+  optional bool is_processed = 3;
+}
+
+message DeleteMediaRequest {
+  string id = 1;
+}
+
+message BulkDeleteMediaRequest {
+  repeated string ids = 1;
+  bool permanent = 2;
+}
+
+message GetSignedUrlRequest {
+  string id = 1;
+  int32 expires_in = 2;
+}
+
+message MediaResponse {
+  bool success = 1;
+  optional string message = 2;
+  optional Media data = 3;
+}
+
+message MediaListResponse {
+  bool success = 1;
+  optional string message = 2;
+  repeated Media data = 3;
+}
+
+message DeleteMediaResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message BulkDeleteMediaResponse {
+  bool success = 1;
+  string message = 2;
+  int32 deleted = 3;
+  repeated string failed = 4;
+}
+
+message SignedUrlResponse {
+  bool success = 1;
+  string url = 2;
 }
