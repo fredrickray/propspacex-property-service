@@ -2,6 +2,7 @@ import paginate from 'mongoose-paginate-v2';
 import { PaginateModel, Schema, model } from 'mongoose';
 import {
   IProperty,
+  IPropertyDocument,
   Currency,
   PropertyStatus,
   PropertyType,
@@ -75,8 +76,18 @@ const propertySchema = new Schema<IProperty>(
     size: { type: sizeSchema, required: true },
     amenities: { type: [amenitySchema], default: [] },
     media: {
-      images: [{ url: String, mediaId: String }],
-      videos: [{ url: String, mediaId: String }],
+      images: [
+        {
+          url: { type: String, required: true },
+          mediaId: { type: String, required: true },
+        },
+      ],
+      videos: [
+        {
+          url: { type: String, required: true },
+          mediaId: { type: String, required: true },
+        },
+      ],
     },
     ownerId: { type: String, required: true },
     blockchain: {
@@ -85,6 +96,25 @@ const propertySchema = new Schema<IProperty>(
       transactionHash: { type: String },
     },
     isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
+
+const documentFieldSchema = new Schema(
+  {
+    url: { type: String, required: true },
+    mediaId: { type: String, required: true },
+    isVerified: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const propertyDocumentSchema = new Schema<IPropertyDocument>(
+  {
+    propertyId: { type: String, required: true, index: true },
+    deedDocument: { type: documentFieldSchema, required: true },
+    inspectionReport: { type: documentFieldSchema },
+    appraisalReport: { type: documentFieldSchema },
   },
   { timestamps: true }
 );
@@ -105,6 +135,11 @@ propertySchema.plugin(paginate);
 const PropertyModel = model<IProperty, PaginateModel<IProperty>>(
   'Property',
   propertySchema
+);
+
+export const PropertyDocumentModel = model<IPropertyDocument>(
+  'PropertyDocument',
+  propertyDocumentSchema
 );
 
 export default PropertyModel;

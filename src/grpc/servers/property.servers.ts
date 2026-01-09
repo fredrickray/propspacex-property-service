@@ -49,6 +49,28 @@ const toGrpcProperty = (property: any) => {
   };
 };
 
+// Helper to convert MongoDB PropertyDocument to gRPC PropertyDocument message
+const toGrpcPropertyDocument = (doc: any) => {
+  const toDocumentInfo = (info: any) => {
+    if (!info) return null;
+    return {
+      url: info.url || '',
+      mediaId: info.mediaId || '',
+      isVerified: info.isVerified || false,
+    };
+  };
+
+  return {
+    id: doc._id?.toString() || doc.id,
+    propertyId: doc.propertyId?.toString() || doc.propertyId,
+    deedDocument: toDocumentInfo(doc.deedDocument),
+    inspectionReport: toDocumentInfo(doc.inspectionReport),
+    appraisalReport: toDocumentInfo(doc.appraisalReport),
+    createdAt: doc.createdAt?.toISOString() || '',
+    updatedAt: doc.updatedAt?.toISOString() || '',
+  };
+};
+
 // Helper to convert gRPC request to IProperty
 const toPropertyPayload = (request: any): Partial<IProperty> => {
   const payload: any = {};
@@ -544,6 +566,215 @@ const propertyServiceImpl = {
         code:
           error.status === 404 ? grpc.status.NOT_FOUND : grpc.status.INTERNAL,
         message: error.message || 'Failed to get owner property stats',
+      });
+    }
+  },
+
+  // ==================== Document Operations ====================
+
+  // Create Property Documents
+  CreatePropertyDocuments: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, deedDocument, inspectionReport, appraisalReport } =
+        call.request;
+
+      if (!deedDocument || !deedDocument.url || !deedDocument.mediaId) {
+        callback({
+          code: grpc.status.INVALID_ARGUMENT,
+          message: 'Deed document with url and mediaId is required',
+        });
+        return;
+      }
+
+      const document = await PropertyService.createPropertyDocuments(
+        propertyId,
+        {
+          deedDocument: {
+            url: deedDocument.url,
+            mediaId: deedDocument.mediaId,
+          },
+          inspectionReport:
+            inspectionReport?.url && inspectionReport?.mediaId
+              ? {
+                  url: inspectionReport.url,
+                  mediaId: inspectionReport.mediaId,
+                }
+              : null,
+          appraisalReport:
+            appraisalReport?.url && appraisalReport?.mediaId
+              ? {
+                  url: appraisalReport.url,
+                  mediaId: appraisalReport.mediaId,
+                }
+              : null,
+        }
+      );
+      callback(null, {
+        success: true,
+        message: 'Property documents created successfully',
+        document: toGrpcPropertyDocument(document),
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : error.status === 400
+                ? grpc.status.INVALID_ARGUMENT
+                : grpc.status.INTERNAL,
+        message: error.message || 'Failed to create property documents',
+      });
+    }
+  },
+
+  // Get Property Documents
+  GetPropertyDocuments: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId } = call.request;
+      const document = await PropertyService.getPropertyDocuments(propertyId);
+      callback(null, {
+        success: true,
+        message: 'Property documents retrieved successfully',
+        document: document ? toGrpcPropertyDocument(document) : null,
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404 ? grpc.status.NOT_FOUND : grpc.status.INTERNAL,
+        message: error.message || 'Failed to get property documents',
+      });
+    }
+  },
+
+  // Update Property Document
+  UpdatePropertyDocument: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const {
+        propertyId,
+        userId,
+        documentType,
+        document: docInfo,
+      } = call.request;
+      const updatedDocument = await PropertyService.updatePropertyDocument(
+        propertyId,
+        userId,
+        documentType,
+        {
+          url: docInfo.url,
+          mediaId: docInfo.mediaId,
+        }
+      );
+      callback(null, {
+        success: true,
+        message: 'Property document updated successfully',
+        document: toGrpcPropertyDocument(updatedDocument),
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : error.status === 400
+                ? grpc.status.INVALID_ARGUMENT
+                : grpc.status.INTERNAL,
+        message: error.message || 'Failed to update property document',
+      });
+    }
+  },
+
+  // Delete Property Document
+  DeletePropertyDocument: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, userId, documentType } = call.request;
+      const result = await PropertyService.deletePropertyDocument(
+        propertyId,
+        userId,
+        documentType || 'deedDocument'
+      );
+      callback(null, result);
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 403
+              ? grpc.status.PERMISSION_DENIED
+              : grpc.status.INTERNAL,
+        message: error.message || 'Failed to delete property document',
+      });
+    }
+  },
+
+  // Verify Property Document
+  VerifyPropertyDocument: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId, documentType, isVerified } = call.request;
+      const document = await PropertyService.verifyPropertyDocument(
+        propertyId,
+        documentType,
+        isVerified
+      );
+      callback(null, {
+        success: true,
+        message: 'Property document verification status updated',
+        document: toGrpcPropertyDocument(document),
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404
+            ? grpc.status.NOT_FOUND
+            : error.status === 400
+              ? grpc.status.INVALID_ARGUMENT
+              : grpc.status.INTERNAL,
+        message: error.message || 'Failed to verify property document',
+      });
+    }
+  },
+
+  // Get Document Verification Status
+  GetDocumentVerificationStatus: async (
+    call: grpc.ServerUnaryCall<any, any>,
+    callback: grpc.sendUnaryData<any>
+  ) => {
+    try {
+      const { propertyId } = call.request;
+      const status =
+        await PropertyService.getDocumentVerificationStatus(propertyId);
+      callback(null, {
+        success: true,
+        message: 'Document verification status retrieved',
+        status: {
+          deedDocumentVerified: status.deedDocument.isVerified,
+          inspectionReportVerified: status.inspectionReport.isVerified,
+          appraisalReportVerified: status.appraisalReport.isVerified,
+          allVerified: status.allVerified,
+        },
+      });
+    } catch (error: any) {
+      callback({
+        code:
+          error.status === 404 ? grpc.status.NOT_FOUND : grpc.status.INTERNAL,
+        message: error.message || 'Failed to get document verification status',
       });
     }
   },
