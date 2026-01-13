@@ -7,7 +7,7 @@
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
     "build:only": "tsc && tsc-alias",
-    "copy:protos": "cp -R src/protos dist/protos",
+    "copy:protos": "cp -R src/grpc/protos dist/grpc/protos",
     "build": "npm run clean && npm run build:only && npm run copy:protos",
     "prestart": "npm run build",
     "start": "node -r tsconfig-paths/register dist/index.js",
