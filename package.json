@@ -4,7 +4,7 @@
   "main": "src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "clean": "rimraf dist",
+    "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
     "build:only": "tsc && tsc-alias",
     "copy:protos": "cp -R src/protos dist/protos",
