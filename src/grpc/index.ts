@@ -12,7 +12,7 @@ const protoLoaderOptions: protoLoader.Options = {
 };
 
 // Load proto files
-const PROTO_DIR = path.join(__dirname, 'proto');
+const PROTO_DIR = path.join(__dirname, 'protos');
 
 const propertyPackageDefinition = protoLoader.loadSync(
   path.join(PROTO_DIR, 'property.proto'),
@@ -28,6 +28,9 @@ const userPackageDefinition = protoLoader.loadSync(
   path.join(PROTO_DIR, 'user.proto'),
   protoLoaderOptions
 );
+
+export const grpcPackageDefinition: protoLoader.PackageDefinition =
+  propertyPackageDefinition;
 
 // Load gRPC definitions
 const propertyProto = grpc.loadPackageDefinition(

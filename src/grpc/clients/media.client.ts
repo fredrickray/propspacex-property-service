@@ -77,7 +77,7 @@ export class MediaServiceClient {
   ) {
     this.httpBaseUrl = httpUrl;
 
-    const PROTO_PATH = path.join(__dirname, '../proto/media.proto');
+    const PROTO_PATH = path.join(__dirname, '../protos/media.proto');
     const packageDefinition = protoLoader.loadSync(
       PROTO_PATH,
       protoLoaderOptions

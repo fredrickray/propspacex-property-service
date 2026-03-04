@@ -1,5 +1,6 @@
 import * as grpc from '@grpc/grpc-js';
-import { Protos } from '../index';
+import { ReflectionService } from '@grpc/reflection';
+import { Protos, grpcPackageDefinition } from '../index';
 import PropertyService from '@property/property.service';
 import { IProperty, PropertyStatus } from '@property/property.type';
 
@@ -791,6 +792,7 @@ export const startPropertyGrpcServer = (
       Protos.property.PropertyService.service,
       propertyServiceImpl
     );
+    new ReflectionService(grpcPackageDefinition).addToServer(server);
 
     server.bindAsync(
       `0.0.0.0:${port}`,
