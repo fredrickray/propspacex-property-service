@@ -30,7 +30,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const property = await PropertyService.getPropertyById(id);
       res.status(200).json({
         success: true,
@@ -47,7 +47,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const result = await PropertyService.getPropertyWithOwner(id);
       res.status(200).json({
         success: true,
@@ -125,7 +125,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { ownerId } = req.params;
+      const ownerId = req.params.ownerId as string;
       const { page, limit, sort } = req.query;
 
       const pagination: PaginationOptions = {
@@ -161,7 +161,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
       const updates = req.body;
 
@@ -186,7 +186,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
       const { status } = req.body;
 
@@ -211,7 +211,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
 
       const result = await PropertyService.deleteProperty(id, userId);
@@ -227,7 +227,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
 
       const result = await PropertyService.hardDeleteProperty(id, userId);
@@ -270,7 +270,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { ownerId } = req.params;
+      const ownerId = req.params.ownerId as string;
       const stats = await PropertyService.getOwnerPropertyStats(ownerId);
       res.status(200).json({
         success: true,
@@ -287,7 +287,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
       const { images, videos } = req.body;
 
@@ -311,7 +311,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
       const { images, videos } = req.body;
 
@@ -335,7 +335,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
       const { nftId, contractAddress, transactionHash } = req.body;
 
@@ -369,7 +369,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const { deedDocument, inspectionReport, appraisalReport } = req.body;
 
       const documents = await PropertyService.createPropertyDocuments(id, {
@@ -399,7 +399,8 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id, documentType } = req.params;
+      const id = req.params.id as string;
+      const documentType = req.params.documentType as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
       const { url, mediaId } = req.body;
 
@@ -451,7 +452,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const documents = await PropertyService.getPropertyDocuments(id);
       res.status(200).json({
         success: true,
@@ -472,7 +473,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const result = await PropertyService.getPropertyWithDocuments(id);
       res.status(200).json({
         success: true,
@@ -493,7 +494,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const status = await PropertyService.getDocumentVerificationStatus(id);
       res.status(200).json({
         success: true,
@@ -514,7 +515,8 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id, documentType } = req.params;
+      const id = req.params.id as string;
+      const documentType = req.params.documentType as string;
       const { isVerified } = req.body;
 
       const validDocTypes = [
@@ -555,7 +557,8 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id, documentType } = req.params;
+      const id = req.params.id as string;
+      const documentType = req.params.documentType as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
 
       const validDocTypes = [
@@ -592,7 +595,7 @@ export default class PropertyController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const userId = req.body.userId || (req.headers['x-user-id'] as string);
 
       const result = await PropertyService.deleteAllPropertyDocuments(
