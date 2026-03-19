@@ -11,23 +11,29 @@ const protoLoaderOptions: protoLoader.Options = {
   oneofs: true,
 };
 
-// Load proto files
-const PROTO_DIR = path.join(__dirname, 'proto');
+// Load proto files from the submodule at the project root
+const PROTO_DIR = path.resolve(__dirname, '..', '..', 'proto');
+const USER_PROTO_DIR = path.join(PROTO_DIR, 'user', 'v1');
+const PROPERTY_PROTO_DIR = path.join(PROTO_DIR, 'property', 'v1');
+const MEDIA_PROTO_DIR = path.join(PROTO_DIR, 'media', 'v1');
 
 const propertyPackageDefinition = protoLoader.loadSync(
-  path.join(PROTO_DIR, 'property.proto'),
+  path.join(PROPERTY_PROTO_DIR, 'property.proto'),
   protoLoaderOptions
 );
 
 const mediaPackageDefinition = protoLoader.loadSync(
-  path.join(PROTO_DIR, 'media.proto'),
+  path.join(MEDIA_PROTO_DIR, 'media.proto'),
   protoLoaderOptions
 );
 
 const userPackageDefinition = protoLoader.loadSync(
-  path.join(PROTO_DIR, 'user.proto'),
+  path.join(USER_PROTO_DIR, 'user.proto'),
   protoLoaderOptions
 );
+
+export const grpcPackageDefinition: protoLoader.PackageDefinition =
+  propertyPackageDefinition;
 
 // Load gRPC definitions
 const propertyProto = grpc.loadPackageDefinition(
