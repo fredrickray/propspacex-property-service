@@ -18,6 +18,7 @@ export const connectDB = async (): Promise<void> => {
     } else {
       // Use normal MongoDB URL for dev/prod
       const dbUrl = DotenvConfig.Database.url as string;
+      console.log('dbUrl', dbUrl);
       await mongoose.connect(dbUrl);
       console.log(`Connected to MongoDB Successfully`);
     }

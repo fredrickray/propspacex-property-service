@@ -32,6 +32,9 @@ const userPackageDefinition = protoLoader.loadSync(
   protoLoaderOptions
 );
 
+export const grpcPackageDefinition: protoLoader.PackageDefinition =
+  propertyPackageDefinition;
+
 // Load gRPC definitions
 const propertyProto = grpc.loadPackageDefinition(
   propertyPackageDefinition
