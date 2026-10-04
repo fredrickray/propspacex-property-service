@@ -3,6 +3,7 @@ import {
   Unauthorized,
   Forbidden,
   BadRequest,
+  Conflict,
 } from '@middlewares/error.middleware';
 import PropertyModel, { PropertyDocumentModel } from './property.model';
 import {
@@ -13,7 +14,7 @@ import {
   PaginationOptions,
 } from './property.type';
 import { getUserClient, GetUserResponse } from '@grpc/clients/user.client';
-import { PaginateResult, FilterQuery } from 'mongoose';
+import { PaginateResult, FilterQuery, Types } from 'mongoose';
 import {
   getMediaClient,
   MediaItem,
@@ -52,7 +53,141 @@ export default class PropertyService {
   static async createProperty(payload: IProperty): Promise<IProperty> {
     await this.verifyUserExists(payload.ownerId);
 
-    const property = new PropertyModel(payload);
+    const property = new PropertyModel({
+      ...payload,
+      status: PropertyStatus.PENDING,
+      isActive: false,
+      flagged: false,
+      flagNote: undefined,
+      rejectionReason: undefined,
+      moderatedBy: undefined,
+      moderatedAt: undefined,
+    });
+    return property.save();
+  }
+
+  private static emptyPage(
+    pagination: PaginationOptions
+  ): PaginateResult<IProperty> {
+    const page = pagination.page || 1;
+    const limit = pagination.limit || 10;
+    return {
+      docs: [],
+      totalDocs: 0,
+      limit,
+      page,
+      totalPages: 0,
+      hasNextPage: false,
+      hasPrevPage: false,
+      pagingCounter: 0,
+      prevPage: null,
+      nextPage: null,
+      offset: 0,
+    } as PaginateResult<IProperty>;
+  }
+
+  private static async requireProperty(propertyId: string) {
+    if (!propertyId || !Types.ObjectId.isValid(propertyId)) {
+      throw new ResourceNotFound('Property not found');
+    }
+    const property = await PropertyModel.findById(propertyId);
+    if (!property) {
+      throw new ResourceNotFound('Property not found');
+    }
+    return property;
+  }
+
+  static async approveProperty(
+    propertyId: string,
+    adminId: string
+  ): Promise<IProperty> {
+    const property = await this.requireProperty(propertyId);
+    if (property.status === PropertyStatus.AVAILABLE) {
+      throw new Conflict('Listing is already approved');
+    }
+    if (property.status !== PropertyStatus.PENDING) {
+      throw new Conflict('Only pending listings can be approved');
+    }
+
+    const updated = await PropertyModel.findByIdAndUpdate(
+      propertyId,
+      {
+        $set: {
+          status: PropertyStatus.AVAILABLE,
+          isActive: true,
+          moderatedBy: adminId,
+          moderatedAt: new Date(),
+        },
+        $unset: { rejectionReason: 1 },
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      throw new ResourceNotFound('Property not found');
+    }
+    return updated as IProperty;
+  }
+
+  static async rejectProperty(
+    propertyId: string,
+    adminId: string,
+    reason: string
+  ): Promise<IProperty> {
+    const trimmed = reason?.trim() ?? '';
+    if (!trimmed) {
+      throw new BadRequest('Rejection reason is required');
+    }
+
+    const property = await this.requireProperty(propertyId);
+    if (property.status === PropertyStatus.REJECTED) {
+      throw new Conflict('Listing is already rejected');
+    }
+    const canReject =
+      property.status === PropertyStatus.PENDING || property.flagged === true;
+    if (!canReject) {
+      throw new Conflict('Only pending or flagged listings can be rejected');
+    }
+
+    const updated = await PropertyModel.findByIdAndUpdate(
+      propertyId,
+      {
+        $set: {
+          status: PropertyStatus.REJECTED,
+          isActive: false,
+          rejectionReason: trimmed,
+          moderatedBy: adminId,
+          moderatedAt: new Date(),
+        },
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      throw new ResourceNotFound('Property not found');
+    }
+    return updated as IProperty;
+  }
+
+  static async escalateProperty(
+    propertyId: string,
+    adminId: string,
+    note: string
+  ): Promise<IProperty> {
+    const trimmed = note?.trim() ?? '';
+    if (!trimmed) {
+      throw new BadRequest('Escalation note is required');
+    }
+
+    const property = await this.requireProperty(propertyId);
+    if (property.status !== PropertyStatus.PENDING) {
+      throw new Conflict('Only pending listings can be escalated');
+    }
+
+    property.flagged = true;
+    property.flagNote = trimmed;
+    property.moderatedBy = adminId;
+    property.moderatedAt = new Date();
     return property.save();
   }
 
@@ -77,25 +212,63 @@ export default class PropertyService {
     pagination: PaginationOptions = {}
   ): Promise<PaginateResult<IProperty>> {
     const query: FilterQuery<IProperty> = {};
+    const isAdmin = filters.callerRole === 'admin';
+    const ownerScope =
+      filters.includeInactive === true && Boolean(filters.ownerId);
 
     // Debug: Check total count in collection
     const totalCount = await PropertyModel.countDocuments({});
     console.log('Total properties in database:', totalCount);
 
-    // Apply isActive filter - by default show active properties
-    if (filters.isActive !== undefined) {
+    const asksHiddenQueue =
+      filters.status === PropertyStatus.PENDING ||
+      filters.status === PropertyStatus.REJECTED ||
+      filters.flagged === true;
+
+    if (!isAdmin && !ownerScope && asksHiddenQueue) {
+      return this.emptyPage(pagination);
+    }
+
+    const reviewQueue =
+      isAdmin &&
+      (filters.status === PropertyStatus.PENDING ||
+        filters.status === PropertyStatus.REJECTED ||
+        filters.flagged !== undefined);
+
+    const publicAvailable =
+      !isAdmin &&
+      !ownerScope &&
+      (!filters.status || filters.status === PropertyStatus.AVAILABLE);
+
+    if (publicAvailable) {
+      query.status = PropertyStatus.AVAILABLE;
+      query.$or = [{ isActive: true }, { isActive: { $exists: false } }];
+    } else if (filters.isActive !== undefined && !reviewQueue && !ownerScope) {
       query.isActive = filters.isActive;
-    } else {
-      // By default, show active properties (including those where isActive might not be set)
+    } else if (!reviewQueue && !ownerScope) {
       query.$or = [{ isActive: true }, { isActive: { $exists: false } }];
     }
 
     // Apply filters
-    if (filters.type) {
+    if (filters.types && filters.types.length > 0) {
+      query.type = { $in: filters.types };
+    } else if (filters.type) {
       query.type = filters.type;
     }
-    if (filters.status) {
+    if (!publicAvailable && filters.status) {
       query.status = filters.status;
+    } else if (
+      !publicAvailable &&
+      !filters.status &&
+      !ownerScope &&
+      filters.flagged === undefined
+    ) {
+      query.status = {
+        $nin: [PropertyStatus.PENDING, PropertyStatus.REJECTED],
+      };
+    }
+    if (filters.flagged !== undefined) {
+      query.flagged = filters.flagged;
     }
     if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
       query.price = {};
@@ -120,6 +293,21 @@ export default class PropertyService {
     }
     if (filters.ownerId) {
       query.ownerId = filters.ownerId;
+    }
+    if (filters.features && filters.features.length > 0) {
+      query.features = { $all: filters.features };
+    }
+    if (filters.near) {
+      const maxDistanceMeters = (filters.near.maxDistanceKm ?? 10) * 1000;
+      query['location.coordinates'] = {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [filters.near.longitude, filters.near.latitude],
+          },
+          $maxDistance: maxDistanceMeters,
+        },
+      };
     }
     if (filters.search) {
       // If we already have $or for isActive, we need to use $and to combine with search
@@ -250,6 +438,9 @@ export default class PropertyService {
 
     const properties = await PropertyModel.find({
       isActive: true,
+      status: {
+        $nin: [PropertyStatus.PENDING, PropertyStatus.REJECTED],
+      },
       'location.coordinates': {
         $near: {
           $geometry: {

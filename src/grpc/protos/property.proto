@@ -19,6 +19,9 @@ service PropertyService {
 
   // Status Operations
   rpc UpdatePropertyStatus(UpdatePropertyStatusRequest) returns (PropertyResponse);
+  rpc ApproveProperty(ApprovePropertyRequest) returns (PropertyResponse);
+  rpc RejectProperty(RejectPropertyRequest) returns (PropertyResponse);
+  rpc EscalateProperty(EscalatePropertyRequest) returns (PropertyResponse);
 
   // Media Operations
   rpc UpdatePropertyMedia(UpdateMediaRequest) returns (PropertyResponse);
@@ -55,6 +58,7 @@ enum PropertyStatus {
   RENTED = 2;
   SOLD = 3;
   PENDING = 4;
+  REJECTED = 5;
 }
 
 enum Currency {
@@ -141,6 +145,11 @@ message Property {
   bool isActive = 15;
   string createdAt = 16;
   string updatedAt = 17;
+  bool flagged = 18;
+  string flagNote = 19;
+  string rejectionReason = 20;
+  string moderatedBy = 21;
+  string moderatedAt = 22;
 }
 
 message Owner {
@@ -210,6 +219,10 @@ message ListPropertiesRequest {
   bool isActive = 13;
   string search = 14;
   bool filterByActive = 15; // Set to true to apply isActive filter
+  bool flagged = 16;
+  bool filterByFlagged = 17; // Set to true to apply flagged filter
+  string callerRole = 18;
+  bool includeInactive = 19; // Owner lists include pending and rejected rows
 }
 
 message GetPropertiesByOwnerRequest {
@@ -231,6 +244,23 @@ message UpdatePropertyStatusRequest {
   string propertyId = 1;
   string userId = 2;
   string status = 3; // PropertyStatus as string
+}
+
+message ApprovePropertyRequest {
+  string propertyId = 1;
+  string adminId = 2;
+}
+
+message RejectPropertyRequest {
+  string propertyId = 1;
+  string adminId = 2;
+  string reason = 3;
+}
+
+message EscalatePropertyRequest {
+  string propertyId = 1;
+  string adminId = 2;
+  string note = 3;
 }
 
 message UpdateMediaRequest {

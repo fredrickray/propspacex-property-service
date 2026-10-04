@@ -48,6 +48,13 @@ const toGrpcProperty = (property: any) => {
     isActive: property.isActive,
     createdAt: property.createdAt?.toISOString() || '',
     updatedAt: property.updatedAt?.toISOString() || '',
+    flagged: property.flagged === true,
+    flagNote: property.flagNote || '',
+    rejectionReason: property.rejectionReason || '',
+    moderatedBy: property.moderatedBy || '',
+    moderatedAt: property.moderatedAt
+      ? new Date(property.moderatedAt).toISOString()
+      : '',
   };
 };
 
@@ -217,6 +224,10 @@ const propertyServiceImpl = {
       isActive,
       filterByActive,
       search,
+      flagged,
+      filterByFlagged,
+      callerRole,
+      includeInactive,
     } = call.request;
 
     const filters: any = {};
@@ -235,6 +246,11 @@ const propertyServiceImpl = {
       filters.isActive = isActive;
     }
     if (search) filters.search = search;
+    if (filterByFlagged === true) {
+      filters.flagged = flagged;
+    }
+    if (callerRole) filters.callerRole = callerRole;
+    if (includeInactive === true) filters.includeInactive = true;
 
     const pagination = { page: page || 1, limit: limit || 10, sort };
 
@@ -309,6 +325,44 @@ const propertyServiceImpl = {
         hasNextPage: false,
         hasPrevPage: false,
       },
+    });
+  }),
+
+  ApproveProperty: withGrpcErrorHandler(async (call, callback) => {
+    const { propertyId, adminId } = call.request;
+    const property = await PropertyService.approveProperty(propertyId, adminId);
+    callback(null, {
+      success: true,
+      message: 'Listing approved',
+      property: toGrpcProperty(property),
+    });
+  }),
+
+  RejectProperty: withGrpcErrorHandler(async (call, callback) => {
+    const { propertyId, adminId, reason } = call.request;
+    const property = await PropertyService.rejectProperty(
+      propertyId,
+      adminId,
+      reason
+    );
+    callback(null, {
+      success: true,
+      message: 'Listing rejected',
+      property: toGrpcProperty(property),
+    });
+  }),
+
+  EscalateProperty: withGrpcErrorHandler(async (call, callback) => {
+    const { propertyId, adminId, note } = call.request;
+    const property = await PropertyService.escalateProperty(
+      propertyId,
+      adminId,
+      note
+    );
+    callback(null, {
+      success: true,
+      message: 'Listing escalated',
+      property: toGrpcProperty(property),
     });
   }),
 
