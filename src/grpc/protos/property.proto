@@ -40,6 +40,7 @@ service PropertyService {
   rpc DeletePropertyDocument(DeletePropertyDocumentRequest) returns (MessageResponse);
   rpc VerifyPropertyDocument(VerifyPropertyDocumentRequest) returns (PropertyDocumentResponse);
   rpc GetDocumentVerificationStatus(GetPropertyDocumentsRequest) returns (DocumentVerificationStatusResponse);
+  rpc ListPendingDocumentReviews(ListPendingDocumentReviewsRequest) returns (ListPendingDocumentReviewsResponse);
 }
 
 // ==================== Enums ====================
@@ -150,6 +151,7 @@ message Property {
   string rejectionReason = 20;
   string moderatedBy = 21;
   string moderatedAt = 22;
+  string purpose = 23; // sale or rent
 }
 
 message Owner {
@@ -175,6 +177,7 @@ message CreatePropertyRequest {
   repeated PropertyAmenities amenities = 9;
   PropertyMedia media = 10;
   string ownerId = 11;
+  string purpose = 12;
 }
 
 message GetPropertyRequest {
@@ -195,6 +198,7 @@ message UpdatePropertyRequest {
   PropertySize size = 11;
   repeated PropertyAmenities amenities = 12;
   PropertyMedia media = 13;
+  string purpose = 14;
 }
 
 message DeletePropertyRequest {
@@ -223,6 +227,7 @@ message ListPropertiesRequest {
   bool filterByFlagged = 17; // Set to true to apply flagged filter
   string callerRole = 18;
   bool includeInactive = 19; // Owner lists include pending and rejected rows
+  string purpose = 20;
 }
 
 message GetPropertiesByOwnerRequest {
@@ -393,4 +398,25 @@ message DocumentVerificationStatusResponse {
   bool success = 1;
   string message = 2;
   DocumentVerificationStatus status = 3;
+}
+
+message ListPendingDocumentReviewsRequest {
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+message PendingDocumentReview {
+  string id = 1;
+  string propertyId = 2;
+  string documentType = 3;
+  string createdAt = 4;
+}
+
+message ListPendingDocumentReviewsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated PendingDocumentReview reviews = 3;
+  int32 total = 4;
+  int32 page = 5;
+  int32 limit = 6;
 }

@@ -55,6 +55,7 @@ const toGrpcProperty = (property: any) => {
     moderatedAt: property.moderatedAt
       ? new Date(property.moderatedAt).toISOString()
       : '',
+    purpose: property.purpose || 'sale',
   };
 };
 
@@ -91,6 +92,7 @@ const toPropertyPayload = (request: any): Partial<IProperty> => {
   if (request.price) payload.price = request.price;
   if (request.currency) payload.currency = request.currency;
   if (request.ownerId) payload.ownerId = request.ownerId;
+  if (request.purpose) payload.purpose = request.purpose;
   if (request.features) payload.features = request.features;
   if (request.amenities) payload.amenities = request.amenities;
 
@@ -228,6 +230,7 @@ const propertyServiceImpl = {
       filterByFlagged,
       callerRole,
       includeInactive,
+      purpose,
     } = call.request;
 
     const filters: any = {};
@@ -251,6 +254,7 @@ const propertyServiceImpl = {
     }
     if (callerRole) filters.callerRole = callerRole;
     if (includeInactive === true) filters.includeInactive = true;
+    if (purpose) filters.purpose = purpose;
 
     const pagination = { page: page || 1, limit: limit || 10, sort };
 
@@ -571,6 +575,20 @@ const propertyServiceImpl = {
       });
     }
   ),
+
+  ListPendingDocumentReviews: withGrpcErrorHandler(async (call, callback) => {
+    const page = Number(call.request.page) || 1;
+    const limit = Number(call.request.limit) || 20;
+    const result = await PropertyService.listPendingDocumentReviews(page, limit);
+    callback(null, {
+      success: true,
+      message: 'Pending document reviews retrieved',
+      reviews: result.reviews,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    });
+  }),
 };
 
 // Create and start the gRPC server

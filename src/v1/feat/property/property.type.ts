@@ -33,6 +33,7 @@ export interface IProperty {
   description: string;
   type: PropertyType;
   status: PropertyStatus;
+  purpose?: PropertyPurpose;
   price: number;
   currency: Currency;
   location: IPropertyLocation;
@@ -86,6 +87,7 @@ export interface PropertyFilters {
   /** When set, matches any of these property types (e.g. saved searches with multiple types). */
   types?: string[];
   status?: string;
+  purpose?: string;
   minPrice?: number;
   maxPrice?: number;
   city?: string;
@@ -129,6 +131,11 @@ export enum PropertyStatus {
   SOLD = 'sold',
   PENDING = 'pending',
   REJECTED = 'rejected',
+}
+
+export enum PropertyPurpose {
+  SALE = 'sale',
+  RENT = 'rent',
 }
 
 export enum Currency {
