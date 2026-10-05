@@ -62,7 +62,7 @@ const propertySchema = new Schema<IProperty>(
     status: {
       type: String,
       enum: Object.values(PropertyStatus),
-      default: PropertyStatus.AVAILABLE,
+      default: PropertyStatus.PENDING,
     },
     price: { type: Number, required: true },
     currency: {
@@ -95,7 +95,12 @@ const propertySchema = new Schema<IProperty>(
       contractAddress: { type: String },
       transactionHash: { type: String },
     },
-    isActive: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: false },
+    flagged: { type: Boolean, default: false },
+    flagNote: { type: String },
+    rejectionReason: { type: String },
+    moderatedBy: { type: String },
+    moderatedAt: { type: Date },
   },
   { timestamps: true }
 );
@@ -125,6 +130,7 @@ propertySchema.index({ 'location.city': 1, 'location.country': 1 });
 propertySchema.index({ 'size.bedrooms': 1 });
 propertySchema.index({ 'size.bathrooms': 1 });
 propertySchema.index({ isActive: 1 });
+propertySchema.index({ flagged: 1, status: 1 });
 
 // Create a 2dsphere index on location.coordinates for geospatial queries
 propertySchema.index({ 'location.coordinates': '2dsphere' });

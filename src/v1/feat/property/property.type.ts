@@ -50,6 +50,11 @@ export interface IProperty {
     transactionHash?: string;
   };
   isActive: boolean;
+  flagged?: boolean;
+  flagNote?: string;
+  rejectionReason?: string;
+  moderatedBy?: string;
+  moderatedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -78,6 +83,8 @@ export interface IPropertyDocument {
 
 export interface PropertyFilters {
   type?: string;
+  /** When set, matches any of these property types (e.g. saved searches with multiple types). */
+  types?: string[];
   status?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -88,6 +95,19 @@ export interface PropertyFilters {
   ownerId?: string;
   isActive?: boolean;
   search?: string;
+  flagged?: boolean;
+  /** Gateway forwards the validated app role. Only admin may read review queues. */
+  callerRole?: string;
+  /** Owner dashboard lists include inactive pending and rejected rows. */
+  includeInactive?: boolean;
+  /** Properties whose `features` array contains all of these strings. */
+  features?: string[];
+  /** Geo filter using the property GeoJSON point (km). */
+  near?: {
+    longitude: number;
+    latitude: number;
+    maxDistanceKm?: number;
+  };
 }
 
 export interface PaginationOptions {
@@ -108,6 +128,7 @@ export enum PropertyStatus {
   RENTED = 'rented',
   SOLD = 'sold',
   PENDING = 'pending',
+  REJECTED = 'rejected',
 }
 
 export enum Currency {
