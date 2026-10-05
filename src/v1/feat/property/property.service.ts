@@ -10,6 +10,7 @@ import {
   IProperty,
   IPropertyDocument,
   PropertyStatus,
+  PropertyPurpose,
   PropertyFilters,
   PaginationOptions,
 } from './property.type';
@@ -55,6 +56,7 @@ export default class PropertyService {
 
     const property = new PropertyModel({
       ...payload,
+      purpose: this.normalizePurpose(payload.purpose) ?? PropertyPurpose.SALE,
       status: PropertyStatus.PENDING,
       isActive: false,
       flagged: false,
@@ -211,6 +213,14 @@ export default class PropertyService {
     filters: PropertyFilters = {},
     pagination: PaginationOptions = {}
   ): Promise<PaginateResult<IProperty>> {
+    if (
+      filters.purpose &&
+      filters.purpose !== PropertyPurpose.SALE &&
+      filters.purpose !== PropertyPurpose.RENT
+    ) {
+      throw new BadRequest('Purpose must be sale or rent');
+    }
+
     const query: FilterQuery<IProperty> = {};
     const isAdmin = filters.callerRole === 'admin';
     const ownerScope =
@@ -294,6 +304,26 @@ export default class PropertyService {
     if (filters.ownerId) {
       query.ownerId = filters.ownerId;
     }
+    if (filters.purpose === PropertyPurpose.RENT) {
+      query.purpose = PropertyPurpose.RENT;
+    } else if (filters.purpose === PropertyPurpose.SALE) {
+      const saleMatch = {
+        $or: [
+          { purpose: PropertyPurpose.SALE },
+          { purpose: { $exists: false } },
+          { purpose: '' },
+        ],
+      };
+      if (query.$and) {
+        query.$and.push(saleMatch);
+      } else if (query.$or) {
+        const existingOr = query.$or;
+        delete query.$or;
+        query.$and = [{ $or: existingOr }, saleMatch];
+      } else {
+        query.$and = [saleMatch];
+      }
+    }
     if (filters.features && filters.features.length > 0) {
       query.features = { $all: filters.features };
     }
@@ -361,6 +391,10 @@ export default class PropertyService {
     // Prevent updating sensitive fields
     const { ownerId, blockchain, createdAt, updatedAt, ...safeUpdates } =
       updates as any;
+
+    if (safeUpdates.purpose !== undefined) {
+      safeUpdates.purpose = this.normalizePurpose(safeUpdates.purpose);
+    }
 
     const updatedProperty = await PropertyModel.findByIdAndUpdate(
       propertyId,
@@ -916,5 +950,52 @@ export default class PropertyService {
       },
       allVerified,
     };
+  }
+
+  private static normalizePurpose(value?: string): PropertyPurpose | undefined {
+    if (!value || !value.trim()) return undefined;
+    const purpose = value.trim().toLowerCase();
+    if (
+      purpose !== PropertyPurpose.SALE &&
+      purpose !== PropertyPurpose.RENT
+    ) {
+      throw new BadRequest('Purpose must be sale or rent');
+    }
+    return purpose;
+  }
+
+  static async listPendingDocumentReviews(page = 1, limit = 20) {
+    const safePage = page > 0 ? page : 1;
+    const safeLimit = limit > 0 ? Math.min(limit, 100) : 20;
+    const query = {
+      $or: [
+        { 'deedDocument.isVerified': false },
+        { 'inspectionReport.isVerified': false },
+        { 'appraisalReport.isVerified': false },
+      ],
+    };
+    const [docs, total] = await Promise.all([
+      PropertyDocumentModel.find(query)
+        .sort({ createdAt: -1 })
+        .skip((safePage - 1) * safeLimit)
+        .limit(safeLimit),
+      PropertyDocumentModel.countDocuments(query),
+    ]);
+
+    const reviews = docs.flatMap((doc) => {
+      const createdAt = doc.createdAt
+        ? new Date(doc.createdAt).toISOString()
+        : '';
+      return (['deedDocument', 'inspectionReport', 'appraisalReport'] as const)
+        .filter((field) => doc[field] && doc[field]?.isVerified === false)
+        .map((field) => ({
+          id: `${doc._id.toString()}:${field}`,
+          propertyId: doc.propertyId,
+          documentType: field,
+          createdAt,
+        }));
+    });
+
+    return { reviews, total, page: safePage, limit: safeLimit };
   }
 }
