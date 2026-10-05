@@ -41,6 +41,8 @@ service PropertyService {
   rpc VerifyPropertyDocument(VerifyPropertyDocumentRequest) returns (PropertyDocumentResponse);
   rpc GetDocumentVerificationStatus(GetPropertyDocumentsRequest) returns (DocumentVerificationStatusResponse);
   rpc ListPendingDocumentReviews(ListPendingDocumentReviewsRequest) returns (ListPendingDocumentReviewsResponse);
+  rpc RecordPropertyView(RecordPropertyViewRequest) returns (RecordPropertyViewResponse);
+  rpc GetAgentViewStats(GetAgentViewStatsRequest) returns (GetAgentViewStatsResponse);
 }
 
 // ==================== Enums ====================
@@ -419,4 +421,37 @@ message ListPendingDocumentReviewsResponse {
   int32 total = 4;
   int32 page = 5;
   int32 limit = 6;
+}
+
+message RecordPropertyViewRequest {
+  string propertyId = 1;
+  string viewerId = 2;
+}
+
+message RecordPropertyViewResponse {
+  bool success = 1;
+}
+
+message GetAgentViewStatsRequest {
+  string ownerId = 1;
+}
+
+message ViewMonthCount {
+  string month = 1;
+  int32 views = 2;
+}
+
+message TopPropertyView {
+  string propertyId = 1;
+  string title = 2;
+  int32 views = 3;
+}
+
+message GetAgentViewStatsResponse {
+  int32 views = 1;
+  int32 viewsLastMonth = 2;
+  int32 activeListings = 3;
+  int32 listingsCreatedThisMonth = 4;
+  repeated ViewMonthCount months = 5;
+  repeated TopPropertyView topProperties = 6;
 }
