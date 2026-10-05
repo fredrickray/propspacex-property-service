@@ -6,6 +6,7 @@ import {
   Currency,
   PropertyStatus,
   PropertyType,
+  PropertyPurpose,
 } from './property.type';
 
 const amenitySchema = new Schema(
@@ -63,6 +64,11 @@ const propertySchema = new Schema<IProperty>(
       type: String,
       enum: Object.values(PropertyStatus),
       default: PropertyStatus.PENDING,
+    },
+    purpose: {
+      type: String,
+      enum: Object.values(PropertyPurpose),
+      default: PropertyPurpose.SALE,
     },
     price: { type: Number, required: true },
     currency: {
