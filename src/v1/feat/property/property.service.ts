@@ -380,6 +380,19 @@ export default class PropertyService {
     return this.listProperties({ ownerId }, pagination);
   }
 
+  private static closedListingStatus(
+    currentStatus: string | undefined,
+    requestedStatus: unknown
+  ): PropertyStatus.SOLD | PropertyStatus.RENTED | null {
+    if (currentStatus !== PropertyStatus.AVAILABLE) return null;
+    const next =
+      typeof requestedStatus === 'string' ? requestedStatus.trim().toLowerCase() : '';
+    if (next === PropertyStatus.SOLD || next === PropertyStatus.RENTED) {
+      return next;
+    }
+    return null;
+  }
+
   static async updateProperty(
     propertyId: string,
     userId: string,
@@ -387,14 +400,31 @@ export default class PropertyService {
   ): Promise<IProperty> {
     await this.verifyUserExists(userId);
 
-    await this.verifyPropertyOwnership(propertyId, userId);
+    const property = await this.verifyPropertyOwnership(propertyId, userId);
 
-    // Prevent updating sensitive fields
-    const { ownerId, blockchain, createdAt, updatedAt, ...safeUpdates } =
-      updates as any;
+    const {
+      ownerId: _ownerId,
+      blockchain: _blockchain,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      status,
+      isActive: _isActive,
+      moderatedBy: _moderatedBy,
+      moderatedAt: _moderatedAt,
+      rejectionReason: _rejectionReason,
+      flagged: _flagged,
+      flagNote: _flagNote,
+      ...safeUpdates
+    } = updates as any;
 
     if (safeUpdates.purpose !== undefined) {
       safeUpdates.purpose = this.normalizePurpose(safeUpdates.purpose);
+    }
+
+    const closedStatus = this.closedListingStatus(property.status, status);
+    if (closedStatus) {
+      safeUpdates.status = closedStatus;
+      safeUpdates.isActive = false;
     }
 
     const updatedProperty = await PropertyModel.findByIdAndUpdate(
@@ -417,11 +447,15 @@ export default class PropertyService {
   ): Promise<IProperty> {
     await this.verifyUserExists(userId);
 
-    await this.verifyPropertyOwnership(propertyId, userId);
+    const property = await this.verifyPropertyOwnership(propertyId, userId);
+    const closedStatus = this.closedListingStatus(property.status, status);
+    if (!closedStatus) {
+      return property as IProperty;
+    }
 
     const updatedProperty = await PropertyModel.findByIdAndUpdate(
       propertyId,
-      { $set: { status } },
+      { $set: { status: closedStatus, isActive: false } },
       { new: true, runValidators: true }
     );
 
