@@ -20,6 +20,7 @@
       "@config/*": ["src/config/*"],
       "@utils/*": ["src/utils/*"],
       "@property/*": ["src/v1/feat/property/*"],
+      "@saved-search/*": ["src/v1/feat/saved-search/*"],
       "@validations/*": ["src/validations/*"],
       "@grpc/*": ["src/grpc/*"]
     }
