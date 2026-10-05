@@ -6,6 +6,7 @@ import {
   Conflict,
 } from '@middlewares/error.middleware';
 import PropertyModel, { PropertyDocumentModel } from './property.model';
+import PropertyViewModel from './property-view.model';
 import {
   IProperty,
   IPropertyDocument,
@@ -379,6 +380,19 @@ export default class PropertyService {
     return this.listProperties({ ownerId }, pagination);
   }
 
+  private static closedListingStatus(
+    currentStatus: string | undefined,
+    requestedStatus: unknown
+  ): PropertyStatus.SOLD | PropertyStatus.RENTED | null {
+    if (currentStatus !== PropertyStatus.AVAILABLE) return null;
+    const next =
+      typeof requestedStatus === 'string' ? requestedStatus.trim().toLowerCase() : '';
+    if (next === PropertyStatus.SOLD || next === PropertyStatus.RENTED) {
+      return next;
+    }
+    return null;
+  }
+
   static async updateProperty(
     propertyId: string,
     userId: string,
@@ -386,14 +400,31 @@ export default class PropertyService {
   ): Promise<IProperty> {
     await this.verifyUserExists(userId);
 
-    await this.verifyPropertyOwnership(propertyId, userId);
+    const property = await this.verifyPropertyOwnership(propertyId, userId);
 
-    // Prevent updating sensitive fields
-    const { ownerId, blockchain, createdAt, updatedAt, ...safeUpdates } =
-      updates as any;
+    const {
+      ownerId: _ownerId,
+      blockchain: _blockchain,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      status,
+      isActive: _isActive,
+      moderatedBy: _moderatedBy,
+      moderatedAt: _moderatedAt,
+      rejectionReason: _rejectionReason,
+      flagged: _flagged,
+      flagNote: _flagNote,
+      ...safeUpdates
+    } = updates as any;
 
     if (safeUpdates.purpose !== undefined) {
       safeUpdates.purpose = this.normalizePurpose(safeUpdates.purpose);
+    }
+
+    const closedStatus = this.closedListingStatus(property.status, status);
+    if (closedStatus) {
+      safeUpdates.status = closedStatus;
+      safeUpdates.isActive = false;
     }
 
     const updatedProperty = await PropertyModel.findByIdAndUpdate(
@@ -416,11 +447,15 @@ export default class PropertyService {
   ): Promise<IProperty> {
     await this.verifyUserExists(userId);
 
-    await this.verifyPropertyOwnership(propertyId, userId);
+    const property = await this.verifyPropertyOwnership(propertyId, userId);
+    const closedStatus = this.closedListingStatus(property.status, status);
+    if (!closedStatus) {
+      return property as IProperty;
+    }
 
     const updatedProperty = await PropertyModel.findByIdAndUpdate(
       propertyId,
-      { $set: { status } },
+      { $set: { status: closedStatus, isActive: false } },
       { new: true, runValidators: true }
     );
 
@@ -997,5 +1032,108 @@ export default class PropertyService {
     });
 
     return { reviews, total, page: safePage, limit: safeLimit };
+  }
+
+  static async recordView(propertyId: string, viewerId?: string): Promise<void> {
+    const property = await this.requireProperty(propertyId);
+    if (viewerId && viewerId === property.ownerId) {
+      return;
+    }
+
+    await PropertyViewModel.create({
+      propertyId: property._id.toString(),
+      ownerId: property.ownerId,
+      viewedAt: new Date(),
+    });
+  }
+
+  static async getAgentViewStats(ownerId: string) {
+    const months = this.lastSixMonthKeys();
+    const { start: previousStart, end: previousEnd } = this.previousMonthRange();
+    const currentStart = this.currentMonthStart();
+
+    const [views, viewsLastMonth, activeListings, listingsCreatedThisMonth, monthGroups, viewGroups, listings] =
+      await Promise.all([
+        PropertyViewModel.countDocuments({ ownerId }),
+        PropertyViewModel.countDocuments({
+          ownerId,
+          viewedAt: { $gte: previousStart, $lt: previousEnd },
+        }),
+        PropertyModel.countDocuments({
+          ownerId,
+          status: PropertyStatus.AVAILABLE,
+        }),
+        PropertyModel.countDocuments({
+          ownerId,
+          createdAt: { $gte: currentStart },
+        }),
+        PropertyViewModel.aggregate<{ _id: string; views: number }>([
+          { $match: { ownerId } },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: '%Y-%m',
+                  date: '$viewedAt',
+                  timezone: 'UTC',
+                },
+              },
+              views: { $sum: 1 },
+            },
+          },
+        ]),
+        PropertyViewModel.aggregate<{ _id: string; views: number }>([
+          { $match: { ownerId } },
+          { $group: { _id: '$propertyId', views: { $sum: 1 } } },
+        ]),
+        PropertyModel.find({ ownerId }).select('title').lean(),
+      ]);
+
+    const viewsByMonth = new Map(monthGroups.map((row) => [row._id, row.views]));
+    const viewsByProperty = new Map(viewGroups.map((row) => [row._id, row.views]));
+    const topProperties = listings
+      .map((listing) => ({
+        propertyId: listing._id.toString(),
+        title: listing.title || '',
+        views: viewsByProperty.get(listing._id.toString()) || 0,
+      }))
+      .sort((left, right) => right.views - left.views || left.title.localeCompare(right.title))
+      .slice(0, 5);
+
+    return {
+      views,
+      viewsLastMonth,
+      activeListings,
+      listingsCreatedThisMonth,
+      months: months.map((month) => ({
+        month,
+        views: viewsByMonth.get(month) || 0,
+      })),
+      topProperties,
+    };
+  }
+
+  private static lastSixMonthKeys(now = new Date()): string[] {
+    const keys: string[] = [];
+    for (let offset = 5; offset >= 0; offset -= 1) {
+      const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+      keys.push(this.monthKey(date));
+    }
+    return keys;
+  }
+
+  private static previousMonthRange(now = new Date()) {
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    return { start, end };
+  }
+
+  private static currentMonthStart(now = new Date()) {
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  }
+
+  private static monthKey(date: Date): string {
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    return `${date.getUTCFullYear()}-${month}`;
   }
 }

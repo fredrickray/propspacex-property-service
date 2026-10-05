@@ -3,6 +3,7 @@ import { ReflectionService } from '@grpc/reflection';
 import { Protos, grpcPackageDefinition } from '../index';
 import PropertyService from '@property/property.service';
 import { IProperty, PropertyStatus } from '@property/property.type';
+import { BadRequest } from '@middlewares/error.middleware';
 import { withGrpcErrorHandler } from '../grpc-error.handler';
 
 // Helper to convert MongoDB document to gRPC Property message
@@ -588,6 +589,21 @@ const propertyServiceImpl = {
       page: result.page,
       limit: result.limit,
     });
+  }),
+
+  RecordPropertyView: withGrpcErrorHandler(async (call, callback) => {
+    const { propertyId, viewerId } = call.request;
+    await PropertyService.recordView(propertyId, viewerId || undefined);
+    callback(null, { success: true });
+  }),
+
+  GetAgentViewStats: withGrpcErrorHandler(async (call, callback) => {
+    const { ownerId } = call.request;
+    if (!ownerId) {
+      throw new BadRequest('Owner ID is required');
+    }
+    const stats = await PropertyService.getAgentViewStats(ownerId);
+    callback(null, stats);
   }),
 };
 
